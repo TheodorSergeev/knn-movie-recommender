@@ -54,13 +54,141 @@ package object predictions
   }
 
 
+  // custom timing functions
+ 
+  def my_timingInMs[Arr](f: (Arr, Arr) => Double, train: Arr, test: Arr): (Double, Double) = {
+    val start = System.nanoTime() 
+    val output = f(train, test)
+    val end = System.nanoTime()
+    return (output, (end - start) / 1e6)
+  }
+
+  def getMeasurements[Arr](func: (Arr, Arr) => Double, train: Arr, test: Arr, runs: Int): Seq[(Double, Double)] = {
+    return (1 to runs).map(x => my_timingInMs(func, train, test))
+  }
+
+  def getTimings[Arr](func: (Arr, Arr) => Double, train: Arr, test: Arr, runs: Int): Seq[Double] = {
+    return getMeasurements(func, train, test, runs).map(t => t._2)
+  }
+
+
   // custom types
   type RatingArr = Array[shared.predictions.Rating]
-  type MaeFunc = (RatingArr, RatingArr) => Double
   type DistrRatingArr = org.apache.spark.rdd.RDD[Rating]
 
 
-  // distributed predictions
+  // baseline prediction
+
+  def globalAvgRating(dataset: RatingArr): Double = {
+    mean(dataset.map(_.rating))
+  }
+
+  def userAvgRating(dataset: RatingArr, userId: Int): Double = {
+    val user_reviews = dataset.filter(_.user == userId)
+
+    if (user_reviews.isEmpty)
+      globalAvgRating(dataset)
+    else
+      globalAvgRating(user_reviews)
+  }
+
+  def itemAvgRating(dataset: RatingArr, itemId: Int): Double = {
+    val item_reviews = dataset.filter(_.item == itemId)
+
+    if (item_reviews.isEmpty)
+      globalAvgRating(dataset)
+    else
+      globalAvgRating(item_reviews)
+  }
+
+  def scaleRatingToUserAverage(rating: Double, avgRating: Double): Double = {
+    if (rating > avgRating)
+      5.0 - avgRating
+    else if (rating < avgRating)
+      avgRating - 1.0
+    else
+      1.0
+  }
+
+  def normalizedDev(review: Rating, avg_user_rating: Double): Double = {
+    return (review.rating - avg_user_rating) / scaleRatingToUserAverage(review.rating, avg_user_rating)
+  }
+
+  def itemAvgDev(dataset: RatingArr, itemId: Int): Double = {
+    val item_reviews = dataset.filter(_.item == itemId)
+    val users_that_rated = item_reviews.map(_.user).distinct
+
+    val avg_user_rating_map = users_that_rated.map(
+      user => (user, userAvgRating(dataset, user))
+    ).toMap
+    
+    val norm_devs = item_reviews.map(
+      review => normalizedDev(review, avg_user_rating_map(review.user))
+    )
+    return mean(norm_devs)
+  }
+
+  def baselinePrediction(user_avg: Double, item_dev: Double): Double = {
+    return user_avg + item_dev * scaleRatingToUserAverage(user_avg + item_dev, user_avg)
+  }
+
+  def baselineRating(dataset: RatingArr, userId: Int, itemId: Int): Double = {
+    val user_avg = userAvgRating(dataset, userId)
+    val mean_item_dev = itemAvgDev(dataset, itemId)
+    return baselinePrediction(user_avg, mean_item_dev)
+  }
+
+  def getMAE(val1: Double, val2: Double): Double = {
+    scala.math.abs(val1 - val2)
+  }
+
+  def globalAvgRatingMAE(train_dataset: RatingArr, 
+                         test_dataset : RatingArr): Double = {
+    //val func = dataset, review => Double ?
+    val glob_avg = globalAvgRating(train_dataset)
+    val err_glob_avg = test_dataset.map(review => getMAE(review.rating, glob_avg))
+
+    return mean(err_glob_avg)
+  }
+
+  def userAvgRatingMAE(train_dataset: RatingArr, 
+                       test_dataset : RatingArr): Double = {
+    val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
+    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
+
+    val err_user_avg = test_dataset.map(review => getMAE(review.rating, user_avg_map(review.user)))
+    return mean(err_user_avg)
+  }
+
+  def itemAvgRatingMAE(train_dataset: RatingArr, 
+                       test_dataset : RatingArr): Double = {
+    val all_items = (train_dataset ++ test_dataset).map(_.item).distinct
+    val item_avg_map = all_items.map(item => (item, itemAvgRating(train_dataset, item))).toMap
+
+    val err_item_avg = test_dataset.map(review => getMAE(review.rating, item_avg_map(review.item)))
+    return mean(err_item_avg)
+  }
+
+  def baselineRatingMAE(train_dataset: RatingArr, 
+                        test_dataset : RatingArr): Double = {
+    val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
+    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
+
+
+    val all_items =  (train_dataset ++ test_dataset).map(_.item).distinct
+    /*could be optimized*/
+    val item_dev_map = all_items.map(item => (item, itemAvgDev(train_dataset, item))).toMap
+
+    val err_base_avg = test_dataset.map(review => 
+      getMAE(review.rating, baselinePrediction(user_avg_map(review.user), item_dev_map(review.item)))
+    )
+
+    return mean(err_base_avg)
+  }
+
+
+  // distributed prediction
+
   def distr_globalAvgRating(dataset: DistrRatingArr): Double = {
     dataset.map(x => x.rating).mean
   }
@@ -150,163 +278,30 @@ package object predictions
     return err_base_avg.mean
   }
 
-
-  // make one prediction 
-
-  def globalAvgRating(dataset: RatingArr): Double = {
-    mean(dataset.map(_.rating))
-  }
-
-  def userAvgRating(dataset: RatingArr, userId: Int): Double = {
-    val user_reviews = dataset.filter(_.user == userId)
-
-    if (user_reviews.isEmpty)
-      globalAvgRating(dataset)
-    else
-      globalAvgRating(user_reviews)
-  }
-
-  def itemAvgRating(dataset: RatingArr, itemId: Int): Double = {
-    val item_reviews = dataset.filter(_.item == itemId)
-
-    if (item_reviews.isEmpty)
-      globalAvgRating(dataset)
-    else
-      globalAvgRating(item_reviews)
-  }
-
-  def scaleRatingToUserAverage(rating: Double, avgRating: Double): Double = {
-    if (rating > avgRating)
-      5.0 - avgRating
-    else if (rating < avgRating)
-      avgRating - 1.0
-    else
-      1.0
-  }
-
-  def normalizedDev(review: Rating, avg_user_rating: Double): Double = {
-    return (review.rating - avg_user_rating) / scaleRatingToUserAverage(review.rating, avg_user_rating)
-  }
-
-  def itemAvgDev(dataset: RatingArr, itemId: Int): Double = {
-    val item_reviews = dataset.filter(_.item == itemId)
-    val users_that_rated = item_reviews.map(_.user).distinct
-
-    val avg_user_rating_map = users_that_rated.map(
-      user => (user, userAvgRating(dataset, user))
-    ).toMap
-    
-    val norm_devs = item_reviews.map(
-      review => normalizedDev(review, avg_user_rating_map(review.user))
-    )
-    return mean(norm_devs)
-  }
-
-  def baselinePrediction(user_avg: Double, item_dev: Double): Double = {
-    return user_avg + item_dev * scaleRatingToUserAverage(user_avg + item_dev, user_avg)
-  }
-
-  def baselineRating(dataset: RatingArr, userId: Int, itemId: Int): Double = {
-    val user_avg = userAvgRating(dataset, userId)
-    val mean_item_dev = itemAvgDev(dataset, itemId)
-    return baselinePrediction(user_avg, mean_item_dev)
-  }
-
-
-  // compute MAE for a dataset
-
-  def getMAE(val1: Double, val2: Double): Double = {
-    scala.math.abs(val1 - val2)
-  }
-
-  def globalAvgRatingMAE(train_dataset: RatingArr, 
-                         test_dataset : RatingArr): Double = {
-    //val func = dataset, review => Double ?
-    val glob_avg = globalAvgRating(train_dataset)
-    val err_glob_avg = test_dataset.map(review => getMAE(review.rating, glob_avg))
-
-    return mean(err_glob_avg)
-  }
-
-  def userAvgRatingMAE(train_dataset: RatingArr, 
-                       test_dataset : RatingArr): Double = {
-    val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
-    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
-
-    val err_user_avg = test_dataset.map(review => getMAE(review.rating, user_avg_map(review.user)))
-    return mean(err_user_avg)
-  }
-
-  def itemAvgRatingMAE(train_dataset: RatingArr, 
-                       test_dataset : RatingArr): Double = {
-    val all_items = (train_dataset ++ test_dataset).map(_.item).distinct
-    val item_avg_map = all_items.map(item => (item, itemAvgRating(train_dataset, item))).toMap
-
-    val err_item_avg = test_dataset.map(review => getMAE(review.rating, item_avg_map(review.item)))
-    return mean(err_item_avg)
-  }
-
-  def baselineRatingMAE(train_dataset: RatingArr, 
-                        test_dataset : RatingArr): Double = {
-    val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
-    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
-
-
-    val all_items =  (train_dataset ++ test_dataset).map(_.item).distinct
-    /*could be optimized*/
-    val item_dev_map = all_items.map(item => (item, itemAvgDev(train_dataset, item))).toMap
-
-    val err_base_avg = test_dataset.map(review => 
-      getMAE(review.rating, baselinePrediction(user_avg_map(review.user), item_dev_map(review.item)))
-    )
-
-    return mean(err_base_avg)
-  }
-
-
-  // custom timing functions
  
-  def my_timingInMs(f: MaeFunc, train: RatingArr, test:RatingArr): (Double, Double) = {
-    val start = System.nanoTime() 
-    val output = f(train, test)
-    val end = System.nanoTime()
-    return (output, (end - start) / 1e6)
-  }
-
-  def getMeasurements(func: MaeFunc, train: RatingArr, test:RatingArr, runs: Int): Seq[(Double, Double)] = {
-    return (1 to runs).map(x => my_timingInMs(func, train, test))
-  }
-
-  def getTimings(func: MaeFunc, train: RatingArr, test:RatingArr, runs: Int): Seq[Double] = {
-    return getMeasurements(func, train, test, runs).map(t => t._2)
-  }
-
- 
-  // personalized predictions
-
+  // personalized prediction
   type SimilarityFunc = (Int, Int, RatingArr) => Double
 
   def sumSeq(arr: Seq[Double]): Double = arr.reduce(_+_)
 
   def similarityUniform(user_aaa: Int, user_bbb: Int, dataset: RatingArr): Double = 1.0
 
-  def itemWeightedDev(dataset: RatingArr, itemId: Int, userId: Int, 
-                      similarity: SimilarityFunc, user_avg_map: Map[Int,Double]): Double = {
+  def itemWeightedDev(dataset: RatingArr, preproc_arr: RatingArr, itemId: Int, userId: Int, 
+                       similarity: SimilarityFunc, user_avg_map: Map[Int,Double]): Double = {
     val item_reviews = dataset.filter(_.item == itemId)
   
     if (item_reviews.isEmpty)
       return 0.0
 
     val weighted_devs = item_reviews.map(
-      review => normalizedDev(review, user_avg_map(review.user)) * similarity(userId, review.user, dataset)
-    )
+      review => normalizedDev(review, user_avg_map(review.user)) * similarity(userId, review.user, preproc_arr)
+    ).sum
     val norm_coef = item_reviews.map(
-      review => scala.math.abs(similarity(userId, review.user, dataset))
-    )
+      review => scala.math.abs(similarity(userId, review.user, preproc_arr))
+    ).sum
 
-    return sumSeq(weighted_devs) / sumSeq(norm_coef)
+    return weighted_devs / norm_coef
   }
-
 
   def personalizedRatingUniform(dataset: RatingArr, userId: Int, itemId: Int): Double = {
     val user_avg = userAvgRating(dataset, userId)
@@ -314,7 +309,7 @@ package object predictions
     val all_users = dataset.map(_.user).distinct
     val user_avg_map = all_users.map(user => (user, userAvgRating(dataset, user))).toMap
 
-    val weighted_item_dev = itemWeightedDev(dataset, itemId, userId, similarityUniform, user_avg_map)
+    val weighted_item_dev = itemWeightedDev(dataset, dataset, itemId, userId, similarityUniform, user_avg_map)
 
     return baselinePrediction(user_avg, weighted_item_dev)
   }
@@ -328,13 +323,12 @@ package object predictions
     /* could be optimized */
     val err_base_avg = test_dataset.map(review => getMAE(review.rating,
         baselinePrediction(user_avg_map(review.user), 
-                           itemWeightedDev(train_dataset, review.item, review.user, similarityUniform, user_avg_map))
+                           itemWeightedDev(train_dataset, train_dataset, review.item, review.user, similarityUniform, user_avg_map))
       )
     )
     
     return mean(err_base_avg)
   }
-
 
   def sqDev(review: Rating, usr_avg: Double): Double = {
     val dev = normalizedDev(review, usr_avg)
@@ -372,31 +366,13 @@ package object predictions
     return (vect_aaa, vect_bbb).zipped.map(_*_).sum
   }
 
-  def itemWeightedDev2(dataset: RatingArr, preproc_arr: RatingArr, itemId: Int, userId: Int, 
-                       similarity: SimilarityFunc, user_avg_map: Map[Int,Double]): Double = {
-    val item_reviews = dataset.filter(_.item == itemId)
-  
-    if (item_reviews.isEmpty)
-      return 0.0
-
-    val weighted_devs = item_reviews.map(
-      review => normalizedDev(review, user_avg_map(review.user)) * similarity(userId, review.user, preproc_arr)
-    ).sum
-    val norm_coef = item_reviews.map(
-      review => scala.math.abs(similarity(userId, review.user, preproc_arr))
-    ).sum
-
-    return weighted_devs / norm_coef
-  }
-
-
   def personalizedRatingCosine(dataset: RatingArr, userId: Int, itemId: Int): Double = {
     //val user_avg = userAvgRating(dataset, userId)
     val user_avg_map = dataset.map(rev => (rev.user, userAvgRating(dataset, rev.user))).toMap
 
     val preproc_arr = preprocDataset(dataset, user_avg_map)
 
-    val weighted_item_dev = itemWeightedDev2(dataset, preproc_arr, itemId, userId, similarityCosine, user_avg_map)
+    val weighted_item_dev = itemWeightedDev(dataset, preproc_arr, itemId, userId, similarityCosine, user_avg_map)
 
     return baselinePrediction(user_avg_map(userId), weighted_item_dev)
   }

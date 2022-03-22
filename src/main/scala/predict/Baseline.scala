@@ -56,7 +56,7 @@ object Baseline extends App {
   val t_globalAvg = getTimings(globalAvgRatingMAE, train, test, num_runs)
   val t_userAvg   = getTimings(  userAvgRatingMAE, train, test, num_runs)
   val t_itemAvg   = getTimings(  itemAvgRatingMAE, train, test, num_runs)
-  val t_baseline  = getTimings( userAvgRatingMAE, train, test, num_runs) // baselineRatingMAE
+  val t_baseline  = getTimings( baselineRatingMAE, train, test, num_runs)
 
   /*
   Linux-specific commands

@@ -1,0 +1,22 @@
+{
+    "Meta": {
+        "1.Train": "data/ml-25m/r2.train",
+        "2.Test": "data/ml-25m/r2.test",
+        "3.Master": "local[4]",
+        "4.Measurements": 3
+    },
+    "D.1": {
+        "1.GlobalAvg": 3.543195360857675,
+        "2.User1Avg": 3.821428571428572,
+        "3.Item1Avg": 3.9003661486825187,
+        "4.Item1AvgDev": 0.2847583380596781,
+        "5.PredUser1Item1": 4.157036612713193,
+        "6.Mae": 0.734754783657659
+    },
+    "D.2": {
+        "1.DistributedBaseline": {
+            "average (ms)": 26506.834677333332,
+            "stddev (ms)": 644.3899655807946
+        }
+    }
+}

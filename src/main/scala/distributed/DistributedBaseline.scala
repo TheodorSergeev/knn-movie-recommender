@@ -49,19 +49,22 @@ object DistributedBaseline extends App {
   val res_PredUser1Item1 = distr_baselineRating (train, 1, 1)
   val res_Mae = distr_baselineRatingMAE(train, test)
 
+  /*
   println(res_GlobalAvg)
   println(res_User1GlobalAvg)
   println(res_Item1GlobalAvg)
   println(res_Item1AvgDev)
   println(res_PredUser1Item1)
   println(res_Mae)
-    
-  /*
-  val measurements = (1 to conf.num_measurements()).map(x => timingInMs(() => {
-    Thread.sleep(1000) // Do everything here from train and test
-    42        // Output answer as last value
-  }))
-  val timings = measurements.map(t => t._2) // Retrieve the timing measurements
+  */
+
+  val num_runs = conf.num_measurements()
+
+  val pattern = """local\[([0-9]+)\]""".r
+  val pattern(num_exec_str) = conf.master()
+  val num_exec = num_exec_str.toInt
+
+  val t_distr  = getTimings[DistrRatingArr](distr_baselineRatingMAE, train, test, num_runs)
 
   // Save answers as JSON
   def printToFile(content: String, 
@@ -82,28 +85,27 @@ object DistributedBaseline extends App {
           "4.Measurements" -> conf.num_measurements()
         ),
         "D.1" -> ujson.Obj(
-          "1.GlobalAvg"      -> ujson.Num(res_GlobalAvg), // Datatype of answer: Double
-          "2.User1Avg"       -> ujson.Num(res_User1GlobalAvg),  // Datatype of answer: Double
-          "3.Item1Avg"       -> ujson.Num(res_Item1GlobalAvg),   // Datatype of answer: Double
-          "4.Item1AvgDev"    -> ujson.Num(res_Item1AvgDev), // Datatype of answer: Double,
+          "1.GlobalAvg"      -> ujson.Num(res_GlobalAvg),      // Datatype of answer: Double
+          "2.User1Avg"       -> ujson.Num(res_User1GlobalAvg), // Datatype of answer: Double
+          "3.Item1Avg"       -> ujson.Num(res_Item1GlobalAvg), // Datatype of answer: Double
+          "4.Item1AvgDev"    -> ujson.Num(res_Item1AvgDev),    // Datatype of answer: Double
           "5.PredUser1Item1" -> ujson.Num(res_PredUser1Item1), // Datatype of answer: Double
-          "6.Mae"            -> ujson.Num(res_Mae) // Datatype of answer: Double
+          "6.Mae"            -> ujson.Num(res_Mae)             // Datatype of answer: Double
         ),
         "D.2" -> ujson.Obj(
           "1.DistributedBaseline" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)), // Datatype of answer: Double
-            "stddev (ms)" -> ujson.Num(std(timings)) // Datatype of answer: Double
-          )            
+            "average (ms)"   -> ujson.Num(mean(t_distr)),      // Datatype of answer: Double
+            "stddev (ms)"    -> ujson.Num(std (t_distr))       // Datatype of answer: Double
+          )
         )
       )
-      val json = write(answers, 4)
+      val json = write(answers, num_exec)
 
-      println(json)
+      println(jsonFile)
       println("Saving answers in: " + jsonFile)
       printToFile(json, jsonFile)
     }
   }
-  */
 
   println("")
   spark.close()

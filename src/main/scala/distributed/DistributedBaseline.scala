@@ -42,6 +42,19 @@ object DistributedBaseline extends App {
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator())
 
+  val res_GlobalAvg      = distr_globalAvgRating(train)
+  val res_userGlobalAvg  = distr_userAvgRating  (train, 1)
+  val res_itemGlobalAvg  = distr_itemAvgRating  (train, 1)
+  val res_Item1AvgDev    = distr_itemAvgDev     (train, 1)
+  val res_PredUser1Item1 = distr_baselineRating (train, 1, 1)
+
+  println(res_GlobalAvg)
+  println(res_userGlobalAvg)
+  println(res_itemGlobalAvg)
+  println(res_Item1AvgDev)
+  println(res_PredUser1Item1)
+
+  /*
   val measurements = (1 to conf.num_measurements()).map(x => timingInMs(() => {
     Thread.sleep(1000) // Do everything here from train and test
     42        // Output answer as last value
@@ -88,6 +101,7 @@ object DistributedBaseline extends App {
       printToFile(json, jsonFile)
     }
   }
+  */
 
   println("")
   spark.close()

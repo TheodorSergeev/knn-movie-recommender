@@ -41,6 +41,27 @@ object Personalized extends App {
   
   // Compute here
 
+  //val res_uniformPredUser1Item1 = personalizedRatingUniform(train, 1, 1)
+  //println(res_uniformPredUser1Item1)
+  //val mae_OnesMAE = personalizedUniformMAE(train, test)
+  //println(mae_OnesMAE)
+
+  //val res_AdjustedCosineUser1User2 = justSimilarityCosine(1, 2, train)
+  //println(res_AdjustedCosineUser1User2)
+  //val res_cosinePredUser1Item1 = personalizedRatingCosine(train, 1, 1)
+  //println(res_cosinePredUser1Item1)
+
+  val mae_AdjustedCosineMAE = personalizedCosineMAE(train, test)
+  println(mae_AdjustedCosineMAE)
+
+  //val res_JaccardUser1User2 = jaccardCoef(1, 2, train)
+  //println(res_JaccardUser1User2)
+  //val res_jaccardPredUser1Item1 = personalizedRatingJaccard(train, 1, 1)
+  //println(res_jaccardPredUser1Item1)
+  //val mae_JaccardPersonalizedMAE = personalizedJaccardMAE(train, test) // worke but takes ~20 mins
+  //println(mae_JaccardPersonalizedMAE)
+
+  /*
   // Save answers as JSON
   def printToFile(content: String, 
                   location: String = "./answers.json") =
@@ -79,7 +100,7 @@ object Personalized extends App {
       printToFile(json, jsonFile)
     }
   }
-
+  */
   println("")
   spark.close()
 }

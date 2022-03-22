@@ -32,21 +32,43 @@ object Baseline extends App {
   println("")
   println("******************************************************")
 
-  var conf = new Conf(args) 
-  // For these questions, data is collected in a scala Array 
-  // to not depend on Spark
+  var conf = new Conf(args)
+
+  // for these questions, data is collected in a scala Array to not depend on Spark
   println("Loading training data from: " + conf.train()) 
   val train = load(spark, conf.train(), conf.separator()).collect()
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator()).collect()
 
-  val measurements = (1 to conf.num_measurements()).map(x => timingInMs(() => {
-    Thread.sleep(1000) // Do everything here from train and test
-    42        // Output answer as last value
-  }))
-  val timings = measurements.map(t => t._2) // Retrieve the timing measurements
+  val res_GlobalAvg      = globalAvgRating(train)
+  val res_User1Avg       = userAvgRating  (train, 1)
+  val res_Item1Avg       = itemAvgRating  (train, 1)
+  val res_Item1AvgDev    = itemAvgDev     (train, 1)
+  val res_PredUser1Item1 = baselineRating (train, 1, 1)
+
+  val mae_GlobalAvg = globalAvgRatingMAE(train, test)
+  val mae_UserAvg   = userAvgRatingMAE  (train, test)
+  val mae_ItemAvg   = itemAvgRatingMAE  (train, test)
+  val mae_Baseline  = baselineRatingMAE (train, test)
+
+  // conf.num_measurements() should be in the command line arguments or whatever
+  val num_runs = conf.num_measurements() // 3
+  val t_globalAvg = getTimings(globalAvgRatingMAE, train, test, num_runs)
+  val t_userAvg   = getTimings(  userAvgRatingMAE, train, test, num_runs)
+  val t_itemAvg   = getTimings(  itemAvgRatingMAE, train, test, num_runs)
+  val t_baseline  = getTimings( userAvgRatingMAE, train, test, num_runs) // baselineRatingMAE
+
+  /*
+  Linux-specific commands
+    model                       : ?
+    CPU speed                   : lscpu | grep MHz
+    RAM                         : grep MemTotal /proc/meminfo
+    OS                          : hostnamectl
+    versions of JVM, Scala, sbt : sbt scalaVersion
+  */
 
   // Save answers as JSON
+  
   def printToFile(content: String, 
                   location: String = "./answers.json") =
     Some(new java.io.PrintWriter(location)).foreach{
@@ -64,34 +86,34 @@ object Baseline extends App {
           "3.Measurements" -> ujson.Num(conf.num_measurements())
         ),
         "B.1" -> ujson.Obj(
-          "1.GlobalAvg" -> ujson.Num(0.0), // Datatype of answer: Double
-          "2.User1Avg" -> ujson.Num(0.0),  // Datatype of answer: Double
-          "3.Item1Avg" -> ujson.Num(0.0),   // Datatype of answer: Double
-          "4.Item1AvgDev" -> ujson.Num(0.0), // Datatype of answer: Double
-          "5.PredUser1Item1" -> ujson.Num(0.0) // Datatype of answer: Double
+          "1.GlobalAvg" -> ujson.Num(res_GlobalAvg),          // Datatype of answer: Double
+          "2.User1Avg" -> ujson.Num(res_User1Avg),            // Datatype of answer: Double
+          "3.Item1Avg" -> ujson.Num(res_Item1Avg),            // Datatype of answer: Double
+          "4.Item1AvgDev" -> ujson.Num(res_Item1AvgDev),      // Datatype of answer: Double
+          "5.PredUser1Item1" -> ujson.Num(res_PredUser1Item1) // Datatype of answer: Double
         ),
         "B.2" -> ujson.Obj(
-          "1.GlobalAvgMAE" -> ujson.Num(0.0), // Datatype of answer: Double
-          "2.UserAvgMAE" -> ujson.Num(0.0),  // Datatype of answer: Double
-          "3.ItemAvgMAE" -> ujson.Num(0.0),   // Datatype of answer: Double
-          "4.BaselineMAE" -> ujson.Num(0.0)   // Datatype of answer: Double
+          "1.GlobalAvgMAE" -> ujson.Num(mae_GlobalAvg),       // Datatype of answer: Double
+          "2.UserAvgMAE" -> ujson.Num(mae_UserAvg),           // Datatype of answer: Double
+          "3.ItemAvgMAE" -> ujson.Num(mae_ItemAvg),           // Datatype of answer: Double
+          "4.BaselineMAE" -> ujson.Num(mae_Baseline)          // Datatype of answer: Double
         ),
         "B.3" -> ujson.Obj(
           "1.GlobalAvg" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)), // Datatype of answer: Double
-            "stddev (ms)" -> ujson.Num(std(timings)) // Datatype of answer: Double
+            "average (ms)" -> ujson.Num(mean(t_globalAvg)),   // Datatype of answer: Double
+            "stddev (ms)" -> ujson.Num(std(t_globalAvg))      // Datatype of answer: Double
           ),
           "2.UserAvg" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)), // Datatype of answer: Double
-            "stddev (ms)" -> ujson.Num(std(timings)) // Datatype of answer: Double
+            "average (ms)" -> ujson.Num(mean(t_userAvg)),     // Datatype of answer: Double
+            "stddev (ms)" -> ujson.Num(std(t_userAvg))        // Datatype of answer: Double
           ),
           "3.ItemAvg" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)), // Datatype of answer: Double
-            "stddev (ms)" -> ujson.Num(std(timings)) // Datatype of answer: Double
+            "average (ms)" -> ujson.Num(mean(t_itemAvg)),     // Datatype of answer: Double
+            "stddev (ms)" -> ujson.Num(std(t_itemAvg))        // Datatype of answer: Double
           ),
           "4.Baseline" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)), // Datatype of answer: Double
-            "stddev (ms)" -> ujson.Num(std(timings)) // Datatype of answer: Double
+            "average (ms)" -> ujson.Num(mean(t_baseline)),    // Datatype of answer: Double
+            "stddev (ms)" -> ujson.Num(std(t_baseline))       // Datatype of answer: Double
           )
         )
       )
@@ -102,7 +124,7 @@ object Baseline extends App {
       printToFile(json.toString, jsonFile)
     }
   }
-
+  
   println("")
   spark.close()
 }

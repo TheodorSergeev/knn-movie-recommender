@@ -115,12 +115,33 @@ package object predictions
 
   def distr_baselineRatingMAE(train_dataset: DistrRatingArr, 
                               test_dataset : DistrRatingArr): Double = {
-    val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
-    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
+    val glob_avg = distr_globalAvgRating(train_dataset)
 
-    val all_items =  (train_dataset ++ test_dataset).map(_.item).distinct
-    /*could be optimized*/
-    val item_dev_map = all_items.map(item => (item, itemAvgDev(train_dataset, item))).toMap
+    val user_avg_map = train_dataset
+      .map(review => (review.user, review.rating))
+      .mapValues(x => (x, 1))
+      .reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2))
+      .mapValues(sum_count => 
+        sum_count._1 / sum_count._2
+      ).collect()
+      .toMap
+      .withDefaultValue(glob_avg)
+
+    val item_dev_map = train_dataset
+      // compute normal deviation for each review
+      .map(
+        review => (review.item, normalizedDev(review, user_avg_map(review.user)))
+      )
+      // count # of occurances of each item, sum normal devs for each item
+      .mapValues(x => (x, 1))
+      .reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2))
+      // compute mean
+      .mapValues(sum_count => 
+        sum_count._1 / sum_count._2
+      ).collect()
+      .toMap
+      // if element is not in the train dataset
+      .withDefaultValue(glob_avg)
 
     val err_base_avg = test_dataset.map(review => 
       getMAE(review.rating, baselinePrediction(user_avg_map(review.user), item_dev_map(review.item)))

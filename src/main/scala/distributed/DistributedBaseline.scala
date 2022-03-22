@@ -43,17 +43,19 @@ object DistributedBaseline extends App {
   val test = load(spark, conf.test(), conf.separator())
 
   val res_GlobalAvg      = distr_globalAvgRating(train)
-  val res_userGlobalAvg  = distr_userAvgRating  (train, 1)
-  val res_itemGlobalAvg  = distr_itemAvgRating  (train, 1)
+  val res_User1GlobalAvg = distr_userAvgRating  (train, 1)
+  val res_Item1GlobalAvg = distr_itemAvgRating  (train, 1)
   val res_Item1AvgDev    = distr_itemAvgDev     (train, 1)
   val res_PredUser1Item1 = distr_baselineRating (train, 1, 1)
+  val res_Mae = distr_baselineRatingMAE(train, test)
 
   println(res_GlobalAvg)
-  println(res_userGlobalAvg)
-  println(res_itemGlobalAvg)
+  println(res_User1GlobalAvg)
+  println(res_Item1GlobalAvg)
   println(res_Item1AvgDev)
   println(res_PredUser1Item1)
-
+  println(res_Mae)
+    
   /*
   val measurements = (1 to conf.num_measurements()).map(x => timingInMs(() => {
     Thread.sleep(1000) // Do everything here from train and test
@@ -80,12 +82,12 @@ object DistributedBaseline extends App {
           "4.Measurements" -> conf.num_measurements()
         ),
         "D.1" -> ujson.Obj(
-          "1.GlobalAvg" -> ujson.Num(0.0), // Datatype of answer: Double
-          "2.User1Avg" -> ujson.Num(0.0),  // Datatype of answer: Double
-          "3.Item1Avg" -> ujson.Num(0.0),   // Datatype of answer: Double
-          "4.Item1AvgDev" -> ujson.Num(0.0), // Datatype of answer: Double,
-          "5.PredUser1Item1" -> ujson.Num(0.0), // Datatype of answer: Double
-          "6.Mae" -> ujson.Num(0.0) // Datatype of answer: Double
+          "1.GlobalAvg"      -> ujson.Num(res_GlobalAvg), // Datatype of answer: Double
+          "2.User1Avg"       -> ujson.Num(res_User1GlobalAvg),  // Datatype of answer: Double
+          "3.Item1Avg"       -> ujson.Num(res_Item1GlobalAvg),   // Datatype of answer: Double
+          "4.Item1AvgDev"    -> ujson.Num(res_Item1AvgDev), // Datatype of answer: Double,
+          "5.PredUser1Item1" -> ujson.Num(res_PredUser1Item1), // Datatype of answer: Double
+          "6.Mae"            -> ujson.Num(res_Mae) // Datatype of answer: Double
         ),
         "D.2" -> ujson.Obj(
           "1.DistributedBaseline" -> ujson.Obj(

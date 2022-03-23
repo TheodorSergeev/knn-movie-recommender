@@ -51,6 +51,7 @@ object Baseline extends App {
   val mae_ItemAvg   = itemAvgRatingMAE  (train, test)
   val mae_Baseline  = baselineRatingMAE (train, test)
 
+/*()
   val num_runs = conf.num_measurements() // 3
   val t_globalAvg = getTimings(globalAvgRatingMAE, train, test, num_runs)
   val t_userAvg   = getTimings(  userAvgRatingMAE, train, test, num_runs)
@@ -123,7 +124,7 @@ object Baseline extends App {
       printToFile(json.toString, jsonFile)
     }
   }
-  
+  */
   println("")
   spark.close()
 }

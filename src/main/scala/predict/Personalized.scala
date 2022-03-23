@@ -51,15 +51,17 @@ object Personalized extends App {
   //val res_cosinePredUser1Item1 = personalizedRatingCosine(train, 1, 1)
   //println(res_cosinePredUser1Item1)
 
-  val mae_AdjustedCosineMAE = personalizedCosineMAE(train, test)
+  val mae_AdjustedCosineMAE = personalizedComplexMAE(train, test, similarityCosine)
   println(mae_AdjustedCosineMAE)
 
-  //val res_JaccardUser1User2 = jaccardCoef(1, 2, train)
+  //val res_JaccardUser1User2 = similarityJaccard(1, 2, train)
   //println(res_JaccardUser1User2)
   //val res_jaccardPredUser1Item1 = personalizedRatingJaccard(train, 1, 1)
   //println(res_jaccardPredUser1Item1)
-  //val mae_JaccardPersonalizedMAE = personalizedJaccardMAE(train, test) // worke but takes ~20 mins
+  
+  //val mae_JaccardPersonalizedMAE = personalizedComplexMAE(train, test, similarityJaccard)
   //println(mae_JaccardPersonalizedMAE)
+  println("hello")
 
   /*
   // Save answers as JSON

@@ -330,29 +330,43 @@ package object predictions
     return mean(err_base_avg)
   }
 
+
+  // cosine personalized
   def sqDev(review: Rating, usr_avg: Double): Double = {
     val dev = normalizedDev(review, usr_avg)
     return dev * dev
   }
 
-  def preprocDataset(dataset: RatingArr, avg_user_map: Map[Int,Double]): RatingArr = {
+  def preprocDataset(dataset: RatingArr, avg_user_map: Map[Int, Double]): RatingArr = {
     val users = dataset.map(_.user).distinct
-    val denom_map = users.map(user_id => (user_id, 
-                                            scala.math.sqrt(
-                                              dataset.filter(rev => rev.user == user_id).map(rev => sqDev(rev, avg_user_map(rev.user))).sum
-                                            )
-                                         )
-                              ).toMap
 
-    val preproc_dataset = dataset.map(
-      review => Rating(review.user, review.item, 
-                       normalizedDev(review, avg_user_map(review.user)) / denom_map(review.user))
+    // for each user a list of items that they rated
+    val denom_map = dataset
+      // squared normalized deviation for each rated item
+      .map(review => (review.user, sqDev(review, avg_user_map(review.user))))
+      .toMap
+      // group by user
+      .groupBy(_._1)
+      // for each user sum the (squared normalized deviation) of items they rated
+      .mapValues(_.map(_._2).sum)
+      // take a square root - get the denominator of the preprocessed rating
+      .mapValues(scala.math.sqrt(_))
+      // make a map to access the denominator for each user
+      .toMap
+      
+    val preproc_dataset = dataset.map(review => Rating(review.user, review.item, 
+        normalizedDev(review, avg_user_map(review.user)) / denom_map(review.user)
+      )
     )
 
     return preproc_dataset
   }
 
-  def similarityCosine(user_aaa: Int, user_bbb: Int, preproc_dataset: RatingArr): Double = {
+  def similarityCosine(user_aaa: Int, user_bbb: Int, preproc_dataset: RatingArr): Double = {    
+    /*def ratedItemsLists(dataset: RatingArr): Map[Int, List((Int,Double))] = {
+
+    }*/
+
     val aaa_reviews = preproc_dataset.filter(_.user == user_aaa)
     val bbb_reviews = preproc_dataset.filter(_.user == user_bbb)
     val aaa_items = aaa_reviews.map(_.item)
@@ -407,33 +421,45 @@ package object predictions
     return weighted_devs / norm_coef
   }
 
+  def userAvgMap(dataset: RatingArr): Map[Int, Double] = {
+    val glob_avg = globalAvgRating(dataset)
+
+    val user_avg_map = dataset
+      .map(review => (review.user, review.rating))
+      .groupBy(_._1)
+      .mapValues(_.map(_._2))
+      .mapValues(mean(_))
+      .toMap
+      .withDefaultValue(glob_avg)
+
+    return user_avg_map
+  }
+
   def personalizedCosineMAE(train_dataset: RatingArr, 
                             test_dataset : RatingArr): Double = {
-
     val all_users = (train_dataset ++ test_dataset).map(_.user).distinct
-    val user_avg_map = all_users.map(user => (user, userAvgRating(train_dataset, user))).toMap
+    val user_avg_map = userAvgMap(train_dataset)
     val preproc_arr = preprocDataset(train_dataset, user_avg_map)
 
     println("asd1")
 
     // similarity(u,v) = similarity(v,u) !
     // so this can be optimized
-    val similarity_arr = all_users.map(user1 => 
-      (user1, all_users.map(user2 => (user2, similarityCosine(user1, user2, preproc_arr))).toMap)
-    ).toMap
+    //val similarity_arr = all_users.map(user1 => 
+    //  (user1, all_users.map(user2 => (user2, similarityCosine(user1, user2, preproc_arr))).toMap)
+    //).toMap
 
     println("asd2")
 
-    /* could be optimized */
-    val err_base_avg = test_dataset.map(review => getMAE(review.rating,
+    /*val err_base_avg = test_dataset.map(review => getMAE(review.rating,
         baselinePrediction(user_avg_map(review.user), 
                            itemWeightedDev3(train_dataset, preproc_arr, review.item, review.user, similarity_arr, user_avg_map))
       )
     )
 
-    println("asd3")
+    println("asd3")*/
 
-    return mean(err_base_avg)
+    return 0.0// mean(err_base_avg)
   }
 
 
@@ -453,7 +479,7 @@ package object predictions
   def personalizedRatingJaccard(dataset: RatingArr, userId: Int, itemId: Int): Double = {
     //val user_avg = userAvgRating(dataset, userId)
     val user_avg_map = dataset.map(rev => (rev.user, userAvgRating(dataset, rev.user))).toMap
-    val weighted_item_dev = itemWeightedDev2(dataset, dataset, itemId, userId, jaccardCoef, user_avg_map)
+    val weighted_item_dev = itemWeightedDev(dataset, dataset, itemId, userId, jaccardCoef, user_avg_map)
 
     return baselinePrediction(user_avg_map(userId), weighted_item_dev)
   }

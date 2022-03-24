@@ -1,3 +1,5 @@
+// runMain predict.Baseline --train data/ml-100k/u2.base --test data/ml-100k/u2.test --json baseline-100k.json --num_measurements 3
+// runMain predict.Baseline --train data/ml-25m/r2.train --test data/ml-25m/r2.test --separator , --json baseline-25m.json  --num_measurements 3
 package predict
 
 import org.rogach.scallop._
@@ -53,6 +55,8 @@ object Baseline extends App {
   // calculate MAE on the test dataset for a predictor trained on a train dataset
   def calcMAE = getFuncCalcMAE(train, test)
   def calcMAETimings = getFuncCalcMAETimings(train, test, conf.num_measurements())
+
+  // runs ~250 sec
 
   println("Computing single predictions")
   val res_GlobalAvg      = globalAvgRating(train)

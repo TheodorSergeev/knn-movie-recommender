@@ -39,31 +39,27 @@ object Personalized extends App {
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator()).collect()
   
-  // Compute here
 
-  //val res_uniformPredUser1Item1 = personalizedRatingUniform(train, 1, 1)
-  //println(res_uniformPredUser1Item1)
-  //val mae_OnesMAE = personalizedUniformMAE(train, test)
-  //println(mae_OnesMAE)
+  // calculate MAE on the test dataset for a predictor trained on a train dataset
+  def calcMAE = getFuncCalcMAE(train, test)
 
-  //val res_AdjustedCosineUser1User2 = justSimilarityCosine(1, 2, train)
-  //println(res_AdjustedCosineUser1User2)
-  //val res_cosinePredUser1Item1 = personalizedRatingCosine(train, 1, 1)
-  //println(res_cosinePredUser1Item1)
+  // runs ~1000 sec
 
-  val mae_AdjustedCosineMAE = personalizedComplexMAE(train, test, similarityCosine)
-  println(mae_AdjustedCosineMAE)
-
-  //val res_JaccardUser1User2 = similarityJaccard(1, 2, train)
-  //println(res_JaccardUser1User2)
-  //val res_jaccardPredUser1Item1 = personalizedRatingJaccard(train, 1, 1)
-  //println(res_jaccardPredUser1Item1)
+  println("Computing for uniform similarities")
+  val res_uniformPredUser1Item1 = personalizedRatingUniform(train, 1, 1)
+  val mae_OnesMAE = calcMAE(predictorPersonalizedUniform)
   
-  //val mae_JaccardPersonalizedMAE = personalizedComplexMAE(train, test, similarityJaccard)
-  //println(mae_JaccardPersonalizedMAE)
-  println("hello")
+  println("Computing for cosine similarities")
+  val res_AdjustedCosineUser1User2 = similarityCosineWithPreprocessing(1, 2, train)
+  val res_cosinePredUser1Item1 = personalizedRatingCosine(train, 1, 1)
+  val mae_AdjustedCosineMAE = calcMAE(predictorPersonalizedSimilarity(similarityCosine, _))
 
-  /*
+  println("Computing for jaccard similarities")
+  val res_JaccardUser1User2 = similarityJaccard(1, 2, train)
+  val res_jaccardPredUser1Item1 = personalizedRatingJaccard(train, 1, 1)  
+  val mae_JaccardPersonalizedMAE = calcMAE(predictorPersonalizedSimilarity(similarityJaccard, _))
+
+  
   // Save answers as JSON
   def printToFile(content: String, 
                   location: String = "./answers.json") =
@@ -82,18 +78,18 @@ object Personalized extends App {
           "3.Measurements" -> ujson.Num(conf.num_measurements())
         ),
         "P.1" -> ujson.Obj(
-          "1.PredUser1Item1" -> ujson.Num(0.0), // Prediction of item 1 for user 1 (similarity 1 between users)
-          "2.OnesMAE" -> ujson.Num(0.0)         // MAE when using similarities of 1 between all users
+          "1.PredUser1Item1" -> ujson.Num(res_uniformPredUser1Item1),              // Prediction of item 1 for user 1 (similarity 1 between users)
+          "2.OnesMAE" -> ujson.Num(mae_OnesMAE)                                    // MAE when using similarities of 1 between all users
         ),
         "P.2" -> ujson.Obj(
-          "1.AdjustedCosineUser1User2" -> ujson.Num(0.0), // Similarity between user 1 and user 2 (adjusted Cosine)
-          "2.PredUser1Item1" -> ujson.Num(0.0),  // Prediction item 1 for user 1 (adjusted cosine)
-          "3.AdjustedCosineMAE" -> ujson.Num(0.0) // MAE when using adjusted cosine similarity
+          "1.AdjustedCosineUser1User2" -> ujson.Num(res_AdjustedCosineUser1User2), // Similarity between user 1 and user 2 (adjusted Cosine)
+          "2.PredUser1Item1" -> ujson.Num(res_cosinePredUser1Item1),               // Prediction item 1 for user 1 (adjusted cosine)
+          "3.AdjustedCosineMAE" -> ujson.Num(mae_AdjustedCosineMAE)                // MAE when using adjusted cosine similarity
         ),
         "P.3" -> ujson.Obj(
-          "1.JaccardUser1User2" -> ujson.Num(0.0), // Similarity between user 1 and user 2 (jaccard similarity)
-          "2.PredUser1Item1" -> ujson.Num(0.0),  // Prediction item 1 for user 1 (jaccard)
-          "3.JaccardPersonalizedMAE" -> ujson.Num(0.0) // MAE when using jaccard similarity
+          "1.JaccardUser1User2" -> ujson.Num(res_JaccardUser1User2),               // Similarity between user 1 and user 2 (jaccard similarity)
+          "2.PredUser1Item1" -> ujson.Num(res_jaccardPredUser1Item1),              // Prediction item 1 for user 1 (jaccard)
+          "3.JaccardPersonalizedMAE" -> ujson.Num(mae_JaccardPersonalizedMAE)      // MAE when using jaccard similarity
         )
       )
       val json = write(answers, 4)
@@ -102,7 +98,7 @@ object Personalized extends App {
       printToFile(json, jsonFile)
     }
   }
-  */
+
   println("")
   spark.close()
 }

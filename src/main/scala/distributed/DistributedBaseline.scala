@@ -42,29 +42,31 @@ object DistributedBaseline extends App {
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator())
 
+
+  // get the number of executors from the command line parameters
+  /*val pattern = """local\[([0-9]+)\]""".r
+  val pattern(num_exec_str) = conf.master()
+  val num_exec = num_exec_str.toInt*/
+
+  // calculate MAE on the test dataset for a predictor trained on a train dataset
+  def calcMAE = distr_getFuncCalcMAE(train, test)
+  def calcMAETimings = distr_getFuncCalcMAETimings(train, test, conf.num_measurements())
+
+  // runs ~??? sec
+
+  println("Computing single predictions")
   val res_GlobalAvg      = distr_globalAvgRating(train)
   val res_User1GlobalAvg = distr_userAvgRating  (train, 1)
   val res_Item1GlobalAvg = distr_itemAvgRating  (train, 1)
   val res_Item1AvgDev    = distr_itemAvgDev     (train, 1)
   val res_PredUser1Item1 = distr_baselineRating (train, 1, 1)
-  val res_Mae = distr_baselineRatingMAE(train, test)
 
-  /*
-  println(res_GlobalAvg)
-  println(res_User1GlobalAvg)
-  println(res_Item1GlobalAvg)
-  println(res_Item1AvgDev)
-  println(res_PredUser1Item1)
-  println(res_Mae)
-  */
+  println("Computing MAE")
+  val res_Mae = calcMAE(distr_predictorBaseline)
 
-  val num_runs = conf.num_measurements()
+  println("Computing timings")
+  val t_distr  = calcMAETimings(distr_predictorBaseline)
 
-  val pattern = """local\[([0-9]+)\]""".r
-  val pattern(num_exec_str) = conf.master()
-  val num_exec = num_exec_str.toInt
-
-  val t_distr  = getTimings[DistrRatingArr](distr_baselineRatingMAE, train, test, num_runs)
 
   // Save answers as JSON
   def printToFile(content: String, 
@@ -99,7 +101,7 @@ object DistributedBaseline extends App {
           )
         )
       )
-      val json = write(answers, num_exec)
+      val json = write(answers, 4)
 
       println(jsonFile)
       println("Saving answers in: " + jsonFile)

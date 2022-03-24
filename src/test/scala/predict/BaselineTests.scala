@@ -68,7 +68,7 @@ class BaselineTests extends AnyFunSuite with BeforeAndAfterAll {
     // calcMAE trains the predictor inside on train2, and calculates MAE value on test2
     assert(within(calcMAE(predictorGlobalAvg), 0.9489, 0.0001))
     assert(within(calcMAE(predictorUserAvg)  , 0.8383, 0.0001))
-    assert(within(calcMAE(predictorItemAvg)  , 0.9855, 0.0001))
-    assert(within(calcMAE(predictorBaseline) , 0.7760, 0.0001))
+    assert(within(calcMAE(predictorItemAvg)  , 0.8206, 0.0001))
+    assert(within(calcMAE(predictorBaseline) , 0.7604, 0.0001))
   }
 }

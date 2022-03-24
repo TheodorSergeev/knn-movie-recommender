@@ -40,26 +40,9 @@ object Baseline extends App {
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator()).collect()
 
-  val res_GlobalAvg      = globalAvgRating(train)
-  val res_User1Avg       = userAvgRating  (train, 1)
-  val res_Item1Avg       = itemAvgRating  (train, 1)
-  val res_Item1AvgDev    = itemAvgDev     (train, 1)
-  val res_PredUser1Item1 = baselineRating (train, 1, 1)
-
-  val mae_GlobalAvg = globalAvgRatingMAE(train, test)
-  val mae_UserAvg   = userAvgRatingMAE  (train, test)
-  val mae_ItemAvg   = itemAvgRatingMAE  (train, test)
-  val mae_Baseline  = baselineRatingMAE (train, test)
-
-/*()
-  val num_runs = conf.num_measurements() // 3
-  val t_globalAvg = getTimings(globalAvgRatingMAE, train, test, num_runs)
-  val t_userAvg   = getTimings(  userAvgRatingMAE, train, test, num_runs)
-  val t_itemAvg   = getTimings(  itemAvgRatingMAE, train, test, num_runs)
-  val t_baseline  = getTimings( baselineRatingMAE, train, test, num_runs)
 
   /*
-  Linux-specific commands
+  Linux-specific commands for system specs
     model                       : ?
     CPU speed                   : lscpu | grep MHz
     RAM                         : grep MemTotal /proc/meminfo
@@ -67,10 +50,34 @@ object Baseline extends App {
     versions of JVM, Scala, sbt : sbt scalaVersion
   */
 
+  // calculate MAE on the test dataset for a predictor trained on a train dataset
+  def calcMAE = getFuncCalcMAE(train, test)
+  def calcMAETimings = getFuncCalcMAETimings(train, test, conf.num_measurements())
+
+  println("Computing single predictions")
+  val res_GlobalAvg      = globalAvgRating(train)
+  val res_User1Avg       = userAvgRating  (train, 1)
+  val res_Item1Avg       = itemAvgRating  (train, 1)
+  val res_Item1AvgDev    = itemAvgDev     (train, 1)
+  val res_PredUser1Item1 = baselineRating (train, 1, 1)
+
+  println("Computing MAE")
+  val mae_GlobalAvg = calcMAE(predictorGlobalAvg)
+  val mae_UserAvg   = calcMAE(predictorUserAvg)
+  val mae_ItemAvg   = calcMAE(predictorItemAvg)
+  val mae_Baseline  = calcMAE(predictorBaseline)
+
+  println("Computing timings")
+  val t_globalAvg = calcMAETimings(predictorGlobalAvg)
+  val t_userAvg   = calcMAETimings(predictorUserAvg)
+  val t_itemAvg   = calcMAETimings(predictorItemAvg) 
+  val t_baseline  = calcMAETimings(predictorBaseline)
+
+  println("Saving results")
+
+
   // Save answers as JSON
-  
-  def printToFile(content: String, 
-                  location: String = "./answers.json") =
+  def printToFile(content: String, location: String = "./answers.json") =
     Some(new java.io.PrintWriter(location)).foreach{
       f => try{
         f.write(content)
@@ -124,7 +131,7 @@ object Baseline extends App {
       printToFile(json.toString, jsonFile)
     }
   }
-  */
+
   println("")
   spark.close()
 }

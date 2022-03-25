@@ -218,6 +218,10 @@ package object predictions
 
   def itemAvgDev(dataset: RatingArr, itemId: Int): Double = {
     val item_reviews = dataset.filter(_.item == itemId)
+      
+    if (item_reviews.isEmpty)
+      return 0.0
+
     val users_that_rated = item_reviews.map(_.user).distinct
 
     val avg_user_rating_map = users_that_rated.map(
@@ -285,28 +289,24 @@ package object predictions
 
   def predictorItemAvg(dataset: RatingArr): RatingPredFunc = {
     val item_avg_map = itemAvgMap(dataset)
-    return (user: Int, item: Int) => item_avg_map(item)
+    return (user: Int, item: Int) => 
+      if (item_avg_map.contains(item))
+        item_avg_map(item)
+      else
+        userAvgRating(dataset, item)
   }
 
   def predictorBaseline(dataset: RatingArr): RatingPredFunc = {
     val user_avg_map = userAvgMap(dataset)
-
-    val glob_avg = globalAvgRating(dataset)
 
     // can be optimized
     val all_items = dataset.map(_.item).distinct
     val item_dev_map = all_items
       .map(item => (item, itemAvgDev(dataset, item)))
       .toMap
+      .withDefaultValue(0.0)
 
-    def get_item_dev(item: Int, user: Int): Double = {
-      if (item_dev_map.contains(item))
-        item_dev_map(item)
-      else 
-        user_avg_map(user)
-    }
-
-    return (user: Int, item: Int) => baselinePrediction(user_avg_map(user), get_item_dev(item, user))
+    return (user: Int, item: Int) => baselinePrediction(user_avg_map(user), item_dev_map(item))
   }
 
 
@@ -422,7 +422,7 @@ package object predictions
       .collect()
       .toMap
       // if element is not in the train dataset
-      .withDefaultValue(glob_avg)
+      .withDefaultValue(0.0)
 
     return (user: Int, item: Int) => baselinePrediction(
       user_avg_map(user), item_dev_map(item)

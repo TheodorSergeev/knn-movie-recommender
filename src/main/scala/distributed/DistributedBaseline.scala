@@ -1,3 +1,7 @@
+// runMain distributed.DistributedBaseline --train data/ml-100k/u2.base --test data/ml-100k/u2.test --json baseline-100k-1.json --master local[1] --num_measurements 3
+// runMain distributed.DistributedBaseline --train data/ml-100k/u2.base --test data/ml-100k/u2.test --json baseline-100k-4.json --master local[4] --num_measurements 3
+// runMain distributed.DistributedBaseline --train data/ml-25m/r2.train --test data/ml-25m/r2.test  --separator , --json distributed-25m-1.json --master local[1] --num_measurements 3
+// runMain distributed.DistributedBaseline --train data/ml-25m/r2.train --test data/ml-25m/r2.test  --separator , --json distributed-25m-4.json --master local[4] --num_measurements 3
 package distributed
 
 import org.rogach.scallop._

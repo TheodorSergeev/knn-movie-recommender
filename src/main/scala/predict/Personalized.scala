@@ -1,3 +1,4 @@
+// runMain predict.Personalized --train data/ml-100k/u2.base --test data/ml-100k/u2.test --json personalized-100k.json
 package predict
 
 import org.rogach.scallop._

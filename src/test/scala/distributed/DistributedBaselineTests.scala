@@ -59,7 +59,7 @@ class DistributedBaselineTests extends AnyFunSuite with BeforeAndAfterAll {
   // 2. There should be a single reusable function to compute the MAE on the test set, given a predictor;
   // 3. There should be invocations of both to show they work on the following datasets.
   test("MAE on all four non-personalized methods on data/ml-100k/u2.base and data/ml-100k/u2.test") {
-    def calcMAE = getFuncCalcMAE(train2, test2)
+    def calcMAE = distr_getFuncCalcMAE(train2, test2)
 
     assert(within(calcMAE(distr_predictorGlobalAvg), 0.9489, 0.0001))
     assert(within(calcMAE(distr_predictorUserAvg),   0.8383, 0.0001))

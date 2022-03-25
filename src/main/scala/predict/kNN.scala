@@ -51,6 +51,7 @@ object kNN extends App {
   }))
   val timings = measurements.map(t => t._2) // Retrieve the timing measurements
 
+
   // Save answers as JSON
   def printToFile(content: String, 
                   location: String = "./answers.json") =
@@ -84,8 +85,8 @@ object kNN extends App {
         ),
         "N.3" -> ujson.Obj(
           "1.kNN" -> ujson.Obj(
-            "average (ms)" -> ujson.Num(mean(timings)),
-            "stddev (ms)" -> ujson.Num(std(timings))
+            "average (ms)" -> ujson.Num(mean(timingKnnMae(train, test, 300))),
+            "stddev (ms)" -> ujson.Num(std(timingKnnMae(train, test, 300)))
           )
         )
       )
@@ -96,6 +97,7 @@ object kNN extends App {
       printToFile(json, jsonFile)
     }
   }
+
 
   println("")
   spark.close()

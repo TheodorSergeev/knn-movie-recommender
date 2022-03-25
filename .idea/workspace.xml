@@ -6,12 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="cc74af69-cdd3-4e4d-ac64-b4f1c7de6d47" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/knn-100k.json" beforeDir="false" afterPath="$PROJECT_DIR$/knn-100k.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/predict/kNN.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/predict/kNN.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/shared/predictions.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/shared/predictions.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/scala/AllTests.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/scala/AllTests.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/scala/predict/kNNTests.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/scala/predict/kNNTests.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/scala/recommend/RecommenderTests.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/scala/recommend/RecommenderTests.scala" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,7 +75,7 @@
       <option name="presentableId" value="Default" />
       <updated>1648125193972</updated>
       <workItem from="1648125195909" duration="23360000" />
-      <workItem from="1648203837420" duration="11467000" />
+      <workItem from="1648203837420" duration="14845000" />
     </task>
     <servers />
   </component>

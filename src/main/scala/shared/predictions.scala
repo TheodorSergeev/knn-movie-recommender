@@ -768,6 +768,19 @@ package object predictions
     mean(err_base_avg)
   }
 
+  def timingKnnMae(train: RatingArr, test: RatingArr, k: Int) = {
+      val times = new Array[Double](3)
+      for (i <- 0 to 2) {
+
+        val start = System.nanoTime()
+        knnMae(train, test, k)
+        val end = System.nanoTime()
+        times(i) = (end - start) / 1e6
+
+    }
+    times.toSeq
+  }
+
 
 
 

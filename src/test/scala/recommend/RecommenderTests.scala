@@ -62,6 +62,10 @@ class RecommenderTests extends AnyFunSuite with BeforeAndAfterAll {
      assert(recommendations(0)._1 == 119)
      assert(within(recommendations(0)._2, 5.0, 0.0001))
      // Idem recommendation 2 and 3
+     assert(recommendations(1)._1 == 814)
+     assert(within(recommendations(1)._2, 5.0, 0.0001))
+     assert(recommendations(2)._1 == 1189)
+     assert(within(recommendations(2)._2, 5.0, 0.0001))
    }
 
 }

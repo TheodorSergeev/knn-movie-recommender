@@ -632,6 +632,9 @@ package object predictions
     )
   }
 
+
+
+
   //================================================================================================
   //========================================== Knn =================================================
   //================================================================================================
@@ -679,6 +682,95 @@ package object predictions
 
     return baselinePrediction(user_avg_map(userId), quickItemDev(itemId, userId))
   }
+
+  //Calculating list of similarities for all pairs of users(excluding duplicates e.g. (1,2),(2,1))
+  def similaritiesFull(data: RatingArr, users: Array[Int]) = {
+    val pairs = for {
+      (x, idxX) <- users.zipWithIndex
+      (y, idxY) <- users.zipWithIndex
+      if idxX < idxY
+    } yield (x, y)
+    val preproc_arr = preprocDatasetOld(data, userAvgMap(data))
+    val distances = pairs.map(pair => (pair._1 , pair._2, similarityCosine(pair._1 , pair._2, preproc_arr)))
+    distances
+  }
+
+  //Calculating Mae for knn with precomputed cosine distances. For faster implementation in N.2
+  def knnMaeFast(train: RatingArr, test: RatingArr, k: Int, distances: Array[(Int, Int, Double)]) = {
+
+    val user_avg_map = userAvgMap(train)
+
+    val users = train.map(_.user).distinct
+
+    val distancesKnn = users.map(user => (distances.filter( x => (x._1 == user || x._2 == user))
+      .sortBy(-_._3).take(k))).flatMap(x=>x)
+
+    def quickItemDev(itemId: Int, userId: Int): Double = {
+      val item_reviews = train.filter(_.item == itemId)
+
+      if (item_reviews.isEmpty)
+        return 0.0
+
+      val item_dev = item_reviews
+        .map(review => {
+          val check = distancesKnn.slice(userId * k - k,userId*k).filter(x => ((x._1 == userId && x._2 == review.user)
+            || (x._1 == review.user && x._2 == userId) ))
+          val sims = if (check.isEmpty) {0.0}  else {check(0)._3}
+          val weighted_dev = normalizedDev(review, user_avg_map(review.user)) * sims
+          (weighted_dev, scala.math.abs(sims))
+        })
+        .reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+      val res = item_dev._1 / item_dev._2
+      if (res.isNaN)
+        0.0
+      else res
+    }
+    val err_base_avg = test.map(rev => getMAE(rev.rating,
+      baselinePrediction(user_avg_map(rev.user), quickItemDev(rev.item, rev.user))))
+
+    mean(err_base_avg)
+  }
+
+  //Calculating Mae for knn including computation of cosine distances
+  def knnMae(train: RatingArr, test: RatingArr, k: Int) = {
+    val user_avg_map = userAvgMap(train)
+
+
+    val users = train.map(_.user).distinct
+
+    val distances = similaritiesFull(train, users)
+
+    val distancesKnn = users.map(user => (distances.filter( x => (x._1 == user || x._2 == user))
+      .sortBy(-_._3).take(k))).flatMap(x=>x)
+
+    def quickItemDev(itemId: Int, userId: Int): Double = {
+      val item_reviews = train.filter(_.item == itemId)
+
+      if (item_reviews.isEmpty)
+        return 0.0
+
+      val item_dev = item_reviews
+        .map(review => {
+          val check = distancesKnn.slice(userId * k - k,userId*k).filter(x => ((x._1 == userId && x._2 == review.user)
+            || (x._1 == review.user && x._2 == userId) ))
+          val sims = if (check.isEmpty) {0.0}  else {check(0)._3}
+          val weighted_dev = normalizedDev(review, user_avg_map(review.user)) * sims
+          (weighted_dev, scala.math.abs(sims))
+        })
+        .reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+      val res = item_dev._1 / item_dev._2
+      if (res.isNaN)
+        0.0
+      else res
+    }
+    val err_base_avg = test.map(rev => getMAE(rev.rating,
+      baselinePrediction(user_avg_map(rev.user), quickItemDev(rev.item, rev.user))))
+    mean(err_base_avg)
+  }
+
+
+
+
 
   //================================================================================================
   //========================================== Recommender =========================================

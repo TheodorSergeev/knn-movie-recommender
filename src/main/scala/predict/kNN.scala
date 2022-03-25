@@ -38,6 +38,11 @@ object kNN extends App {
   val train = load(spark, conf.train(), conf.separator()).collect()
   println("Loading test data from: " + conf.test()) 
   val test = load(spark, conf.test(), conf.separator()).collect()
+  //calculating similarities for N.2
+  val users = train.map(_.user).distinct
+  println("Calculating similarities")
+  val distances = similaritiesFull(train, users)
+  println("done")
 
 
   val measurements = (1 to conf.num_measurements()).map(x => timingInMs(() => {
@@ -70,10 +75,10 @@ object kNN extends App {
           "4.PredUser1Item1" -> ujson.Num(knnPredict(train, 10, 1, 1)) // Prediction of item 1 for user 1 (k=10)
         ),
         "N.2" -> ujson.Obj(
-          "1.kNN-Mae" -> List(10,30,50,100,200,300,400,800,943).map(k => 
+          "1.kNN-Mae" -> List(10,30,50,100,200,300,400,800,943).map(k =>
               List(
                 k,
-                0.0 // Compute MAE
+                knnMaeFast(train, test, k, distances) // Compute MAE
               )
           ).toList
         ),

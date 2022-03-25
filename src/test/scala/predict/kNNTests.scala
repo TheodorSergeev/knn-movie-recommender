@@ -62,13 +62,13 @@ class kNNTests extends AnyFunSuite with BeforeAndAfterAll {
      assert(within(knnPredict(train2, 10, 1, 1), 4.3190, 0.0001))
 
      // MAE on test2 
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(knnMae(train2, test2, 10), 0.8287, 0.0001))
    } 
 
    test("kNN Mae") {
      // Compute MAE for k around the baseline MAE
-     
+     val mae = knnMae(train2, test2, 100)
      // Ensure the MAEs are indeed lower/higher than baseline
-     assert(1.0 < 0.0)
+     assert(mae < 0.7604)
    }
 }

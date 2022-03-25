@@ -52,6 +52,15 @@ object Baseline extends App {
     versions of JVM, Scala, sbt : sbt scalaVersion
   */
 
+  /*
+  Windows-specific commands for system specs
+    CPU speed | Get-WmiObject Win32_Processor
+    OS RAM    | systeminfo
+    JVM       | About Java application
+    sbt       | sbt sbtVersion
+    scala     | sbt scalaVersion
+  */
+
   // calculate MAE on the test dataset for a predictor trained on a train dataset
   def calcMAE = getFuncCalcMAE(train, test)
   def calcMAETimings = getFuncCalcMAETimings(train, test, conf.num_measurements())

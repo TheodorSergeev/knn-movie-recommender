@@ -54,12 +54,12 @@ class RecommenderTests extends AnyFunSuite with BeforeAndAfterAll {
    // should be in a single library, 'src/main/scala/shared/predictions.scala'.
    //
    test("Prediction for user 1 of item 1") {
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(knnPredict(data++personal, 300, 1, 1), 4.1321, 0.0001))
    }
 
    test("Top 3 recommendations for user 944") {
-     val recommendations = List((1,0.0), (2,0.0), (3,0.0))
-     assert(recommendations(0)._1 == 4)
+     val recommendations = recommend(data, personal, 300, 944)
+     assert(recommendations(0)._1 == 119)
      assert(within(recommendations(0)._2, 5.0, 0.0001))
      // Idem recommendation 2 and 3
    }

@@ -50,16 +50,16 @@ class kNNTests extends AnyFunSuite with BeforeAndAfterAll {
      // Create predictor on train2
 
      // Similarity between user 1 and itself
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(similarUsers(1, 1, 10, train2), 0.0, 0.0001))
  
      // Similarity between user 1 and 864
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(similarUsers(1, 864, 10, train2), 0.2423, 0.0001))
 
      // Similarity between user 1 and 886
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(similarUsers(1, 886, 10, train2), 0.0, 0.0001))
 
      // Prediction user 1 and item 1
-     assert(within(1.0, 0.0, 0.0001))
+     assert(within(knnPredict(train2, 10, 1, 1), 4.3190, 0.0001))
 
      // MAE on test2 
      assert(within(1.0, 0.0, 0.0001))

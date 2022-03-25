@@ -631,4 +631,89 @@ package object predictions
       user_avg_map(user), quickItemDev(item, user)
     )
   }
+
+  //================================================================================================
+  //========================================== Knn =================================================
+  //================================================================================================
+
+  //knn for single user
+  def knn(userId: Int, k: Int,
+          data: RatingArr) = {
+    val users = data.filter(_.user != userId).map(_.user).distinct
+    val preproc_arr = preprocDatasetOld(data, userAvgMap(data))
+    val distances = users.map(user => (userId , user, similarityCosine(userId, user, preproc_arr)))
+    distances.sortBy(_._3).reverse.take(k)
+  }
+
+  //calculate similarity for pair of users based on knn
+  def similarUsers(user1: Int, user2:Int, k:Int, data:RatingArr) = {
+    val distances = knn(user1, k, data)
+    val check = distances.filter(x => (x._1 == user1 && x._2 == user2))
+    if (check.isEmpty) 0.0
+    else check(0)._3
+  }
+
+  //predict item rating based on knn
+  def knnPredict(dataset: RatingArr, k:Int, userId: Int, itemId: Int): Double = {
+    val user_avg_map = userAvgMap(dataset)
+
+    val distances = knn(userId, k, dataset)
+
+    def quickItemDev(itemId: Int, userId: Int): Double = {
+      val item_reviews = dataset.filter(_.item == itemId)
+
+      if (item_reviews.isEmpty)
+        return 0.0
+
+      val item_dev = item_reviews
+        .map(review => {
+          val check = distances.filter(x => (x._1 == userId && x._2 == review.user))
+          val sims = if (check.isEmpty){0.0}  else {check(0)._3}
+          val weighted_dev = normalizedDev(review, user_avg_map(review.user)) * sims
+          (weighted_dev, scala.math.abs(sims))
+        })
+        .reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+
+      return item_dev._1 / item_dev._2
+    }
+
+    return baselinePrediction(user_avg_map(userId), quickItemDev(itemId, userId))
+  }
+
+  //================================================================================================
+  //========================================== Recommender =========================================
+  //================================================================================================
+
+  //recommend top 3 movies based on knn
+  def recommend(data: RatingArr, personal :RatingArr,  k:Int, userId: Int): List[(Int, Double)] = {
+
+    val dataset = data ++ personal
+
+    val items = data.map(_.item).distinct.diff(personal.map(_.item))
+
+    val user_avg_map = userAvgMap(dataset)
+
+    val distances = knn(userId, k, dataset)
+
+    def quickItemDev(itemId: Int, userId: Int): Double = {
+      val item_reviews = dataset.filter(_.item == itemId)
+
+      if (item_reviews.isEmpty)
+        return 0.0
+
+      val item_dev = item_reviews
+        .map(review => {
+          val check = distances.filter(x => (x._1 == userId && x._2 == review.user))
+          val sims = if (check.isEmpty){0.0}  else {check(0)._3}
+          val weighted_dev = normalizedDev(review, user_avg_map(review.user)) * sims
+          (weighted_dev, scala.math.abs(sims))
+        })
+        .reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+
+      return item_dev._1 / item_dev._2
+    }
+    val result = items.map(x =>
+      (x, baselinePrediction(user_avg_map(userId), quickItemDev(x, userId)))).filterNot(_._2.isNaN)
+    return result.toList.sortBy(row => (-row._2, row._1)).take(3)
+  }
 }    

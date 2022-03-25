@@ -1,0 +1,26 @@
+{
+    "Meta": {
+        "data": "data/ml-100k/u.data",
+        "personal": "data/personal.csv"
+    },
+    "R.1": {
+        "PredUser1Item1": 4.132180229734752
+    },
+    "R.2": [
+        [
+            119,
+            "Maya Lin: A Strong Clear Vision (1994)",
+            5
+        ],
+        [
+            814,
+            "Great Day in Harlem",
+            5
+        ],
+        [
+            1189,
+            "Prefontaine (1997)",
+            5
+        ]
+    ]
+}

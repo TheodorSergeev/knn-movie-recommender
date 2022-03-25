@@ -64,10 +64,10 @@ object kNN extends App {
           "3.Measurements" -> conf.num_measurements()
         ),
         "N.1" -> ujson.Obj(
-          "1.k10u1v1" -> ujson.Num(0.0), // Similarity between user 1 and user 1 (k=10)
-          "2.k10u1v864" -> ujson.Num(0.0), // Similarity between user 1 and user 864 (k=10)
-          "3.k10u1v886" -> ujson.Num(0.0), // Similarity between user 1 and user 886 (k=10)
-          "4.PredUser1Item1" -> ujson.Num(0.0) // Prediction of item 1 for user 1 (k=10)
+          "1.k10u1v1" -> ujson.Num(similarUsers(1, 1, 10, train)), // Similarity between user 1 and user 1 (k=10)
+          "2.k10u1v864" -> ujson.Num(similarUsers(1, 864, 10, train)), // Similarity between user 1 and user 864 (k=10)
+          "3.k10u1v886" -> ujson.Num(similarUsers(1, 886, 10, train)), // Similarity between user 1 and user 886 (k=10)
+          "4.PredUser1Item1" -> ujson.Num(knnPredict(train, 10, 1, 1)) // Prediction of item 1 for user 1 (k=10)
         ),
         "N.2" -> ujson.Obj(
           "1.kNN-Mae" -> List(10,30,50,100,200,300,400,800,943).map(k => 
